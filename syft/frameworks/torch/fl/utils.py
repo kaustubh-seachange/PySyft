@@ -1,6 +1,7 @@
 import syft as sy
 import torch
-from typing import List
+from typing import Dict
+from typing import Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -10,10 +11,9 @@ def extract_batches_per_worker(federated_train_loader: sy.FederatedDataLoader):
     """Extracts the batches from the federated_train_loader and stores them
        in a dictionary (keys = data.location).
 
-       Args:
-       federated_train_loader: the connection object we use to send responses.
-                    back to the client.
-
+    Args:
+        federated_train_loader: the connection object we use to send responses.
+                back to the client.
     """
     logging_interval = 100
     batches = {}
@@ -32,13 +32,13 @@ def extract_batches_per_worker(federated_train_loader: sy.FederatedDataLoader):
 def add_model(dst_model, src_model):
     """Add the parameters of two models.
 
-        Args:
-            dst_model (torch.nn.Module): the model to which the src_model will be added.
-            src_model (torch.nn.Module): the model to be added to dst_model.
-        Returns:
-            torch.nn.Module: the resulting model of the addition.
+    Args:
+        dst_model (torch.nn.Module): the model to which the src_model will be added.
+        src_model (torch.nn.Module): the model to be added to dst_model.
+    Returns:
+        torch.nn.Module: the resulting model of the addition.
 
-        """
+    """
 
     params1 = src_model.named_parameters()
     params2 = dst_model.named_parameters()
@@ -68,19 +68,23 @@ def scale_model(model, scale):
     return model
 
 
-def federated_avg(models: List[torch.nn.Module]) -> torch.nn.Module:
-    """Calculate the federated average of a list of models.
+def federated_avg(models: Dict[Any, torch.nn.Module]) -> torch.nn.Module:
+    """Calculate the federated average of a dictionary containing models.
+       The models are extracted from the dictionary
+       via the models.values() command.
 
     Args:
-        models (List[torch.nn.Module]): the models of which the federated average is calculated.
+        models (Dict[Any, torch.nn.Module]): a dictionary of models
+        for which the federated average is calculated.
 
     Returns:
         torch.nn.Module: the module with averaged parameters.
     """
     nr_models = len(models)
     model_list = list(models.values())
-    model = model_list[0]
-    for i in range(1, nr_models):
+    model = type(model_list[0])()
+
+    for i in range(nr_models):
         model = add_model(model, model_list[i])
     model = scale_model(model, 1.0 / nr_models)
     return model
@@ -89,7 +93,8 @@ def federated_avg(models: List[torch.nn.Module]) -> torch.nn.Module:
 def accuracy(pred_softmax, target):
     """Calculate the accuray of a given prediction.
 
-    This functions assumes pred_softmax to be converted into the final prediction by taking the argmax.
+    This functions assumes pred_softmax to be converted into the final prediction by
+    taking the argmax.
 
     Args:
         pred_softmax: array type(float), providing nr_classes values per element in target.
@@ -105,7 +110,7 @@ def accuracy(pred_softmax, target):
 
 
 def create_gaussian_mixture_toy_data(nr_samples: int):  # pragma: no cover
-    """ Create a simple toy data for binary classification
+    """Create a simple toy data for binary classification
 
     The data is drawn from two normal distributions
     target = 1: mu = 2, sigma = 1
@@ -122,13 +127,13 @@ def create_gaussian_mixture_toy_data(nr_samples: int):  # pragma: no cover
     """
     sample_dim = 2
     one_half = int(nr_samples / 2)
-    X1 = torch.randn(one_half, sample_dim, requires_grad=True)
-    X2 = torch.randn(one_half, sample_dim, requires_grad=True) + 2
-    X = torch.cat([X1, X2], dim=0)
-    Y1 = torch.zeros(one_half, requires_grad=False).long()
-    Y2 = torch.ones(one_half, requires_grad=False).long()
-    Y = torch.cat([Y1, Y2], dim=0)
-    return X, Y
+    x1 = torch.randn(one_half, sample_dim, requires_grad=True) - 5
+    x2 = torch.randn(one_half, sample_dim, requires_grad=True) + 5
+    x = torch.cat([x1, x2], dim=0)
+    y1 = torch.zeros(one_half, requires_grad=False).long()
+    y2 = torch.ones(one_half, requires_grad=False).long()
+    y = torch.cat([y1, y2], dim=0)
+    return x, y
 
 
 def iris_data_partial():
@@ -150,7 +155,6 @@ def iris_data_partial():
         [4.9, 3.1, 1.5, 0.1],
     ]
 
-    target_to_string = {0: "Iris-setosa", 1: "Iris-versicolor", 2: "Iris-virginica"}
     targets = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     data += [

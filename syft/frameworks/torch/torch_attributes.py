@@ -1,10 +1,8 @@
+import re
 from types import ModuleType
-from typing import Union
-from typing import Callable
-from typing import Any
 
-from syft.generic.frameworks.attributes import FrameworkAttributes
 from syft.frameworks.torch.tensors.interpreters.native import TorchTensor
+from syft.generic.frameworks.attributes import FrameworkAttributes
 
 
 class TorchAttributes(FrameworkAttributes):
@@ -26,7 +24,7 @@ class TorchAttributes(FrameworkAttributes):
         hook: A TorchHook to stash
     """
 
-    ### Subclasses must provide the following class attributes ###
+    # Subclasses must provide the following class attributes
     ALIAS = "torch"
     Tensor = TorchTensor
 
@@ -61,7 +59,6 @@ class TorchAttributes(FrameworkAttributes):
         # - functions like native_*
         # - functions that could use pointers or syft tensors
         self.exclude = [
-            "arange",
             "as_tensor",
             "from_numpy",
             "get_default_dtype",
@@ -88,9 +85,6 @@ class TorchAttributes(FrameworkAttributes):
             "isclose",
             "isfinite",
             "load",
-            "manual_seed",
-            "ones",
-            "range",
             "save",
             "set_",
             "set_num_threads",
@@ -101,10 +95,15 @@ class TorchAttributes(FrameworkAttributes):
             "stride",
             "tensor",
             "typename",
-            "zeros",
         ]
 
-        self.worker_methods = ["tensor", "rand", "zeros", "randn", "randint"]
+        self.worker_methods = [
+            "tensor",
+            "rand",
+            "zeros",
+            "randn",
+            "randint",
+        ]
 
         # SECTION: Build the guard, that define which functions or methods can be safely called by
         # external or local workers
@@ -128,7 +127,7 @@ class TorchAttributes(FrameworkAttributes):
             self.guard[f"syft.{key}"] = self.guard[key]
 
         # Concatenate torch functions
-        self.allowed_commands = self._torch_functions
+        self.allowed_commands = self.allowed_commands.union(self._torch_functions)
 
         # The equivalent concatenation of native torch function names and native torch method names
         self.native_commands = {
@@ -140,6 +139,14 @@ class TorchAttributes(FrameworkAttributes):
 
         # Dict {method_name: <is_inplace:bool>
         self.inplace_methods = {}
+        self._inplace_pattern = re.compile(r"(^__i(?!nit|mport|ter).+_)|^((?!^_+).+[^_])_$")
+        # Positives:
+        # __iadd__, share_
+
+        # Negatives:
+        # __init__, __import__, __iter__, __foo__, __bar_foo
+
+        self.global_state_change_methods = {"seed", "manual_seed"}
 
     def is_inplace_method(self, method_name):
         """Determine if a method is inplace or not.
@@ -155,6 +162,10 @@ class TorchAttributes(FrameworkAttributes):
         try:
             return self.inplace_methods[method_name]
         except KeyError:
-            is_inplace = method_name[-1] == "_" and "__" not in method_name
+            is_inplace = True if re.search(self._inplace_pattern, method_name) else False
+
             self.inplace_methods[method_name] = is_inplace
             return is_inplace
+
+    def is_global_state_change_method(self, method_name):
+        return method_name in self.global_state_change_methods
