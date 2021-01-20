@@ -1,20 +1,30 @@
-.. PySyft documentation master file, created by
-   sphinx-quickstart on Tue Apr 16 11:04:18 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-Welcome to PySyft's documentation!
-==================================
+.. include:: ../README.md
 
 .. toctree::
+   :caption: User Documentation
    :maxdepth: 2
-   :caption: Contents:
 
+   installing
+   basics
+   duet
 
+.. toctree::
+    :maxdepth: 2
+    :caption: Developer Documentation
 
-Indices and tables
-==================
+    dev_environment
+    codebase_walkthrough
+    finding_an_issue
+    coding_standards
+    joining_a_team
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. toctree::
+    :maxdepth: 2
+    :caption: API Documentation
+
+    syft.ast <api/syft.ast>
+    syft.core <api/syft.core>
+    syft.decorators <api/syft.decorators>
+    syft.grid <api/syft.grid>
+    syft.lib <api/syft.lib>
+    syft.proto <api/syft.proto>
